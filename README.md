@@ -101,8 +101,8 @@ La aplicación estará disponible en `http://localhost:5299`
 
 ### Credenciales de Prueba
 
-| Rol | Correo | Contraseña |
-|-----|--------|------------|
+| Rol | Correo | 
+|-----|--------|
 | Admin | admin@comisiones.com | 
 | Vendedor | vendedor@comisiones.com |
 
