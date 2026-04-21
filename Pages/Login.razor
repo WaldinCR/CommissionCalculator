@@ -1,0 +1,84 @@
+@page "/login"
+@inject IAuthService Auth
+@inject NavigationManager Nav
+@inject ToastService Toast
+
+<PageTitle>Iniciar Sesión — CommissionCalc</PageTitle>
+
+<div class="login-page">
+    <div class="login-card glass-card">
+        <div class="login-header">
+            <span class="login-icon">◈</span>
+            <h1>Bienvenido</h1>
+            <p class="login-subtitle">Ingresa tus credenciales para continuar</p>
+        </div>
+
+        <EditForm Model="@_request" OnValidSubmit="HandleLogin" class="login-form">
+            <DataAnnotationsValidator />
+
+            <div class="form-group">
+                <label><i class="bi bi-envelope"></i> Correo electrónico</label>
+                <InputText @bind-Value="_request.Email" class="form-control" placeholder="correo@ejemplo.com" />
+                <ValidationMessage For="@(() => _request.Email)" />
+            </div>
+
+            <div class="form-group">
+                <label><i class="bi bi-lock"></i> Contraseña</label>
+                <InputText @bind-Value="_request.Password" type="password" class="form-control" placeholder="••••••••" />
+                <ValidationMessage For="@(() => _request.Password)" />
+            </div>
+
+            @if (!string.IsNullOrEmpty(_error))
+            {
+                <div class="alert-error">
+                    <i class="bi bi-exclamation-circle"></i> @_error
+                </div>
+            }
+
+            <button type="submit" class="btn-primary btn-full">
+                <i class="bi bi-arrow-right-circle"></i> Iniciar Sesión
+            </button>
+        </EditForm>
+
+        <div class="demo-credentials">
+            <p class="demo-title"><i class="bi bi-info-circle"></i> Credenciales de prueba</p>
+            <div class="demo-grid">
+                <button class="demo-btn" @onclick='() => FillCredentials("admin@comisiones.com", "admin123")'>
+                    <strong>Admin</strong>
+                    <span>admin@comisiones.com</span>
+                </button>
+                <button class="demo-btn" @onclick='() => FillCredentials("vendedor@comisiones.com", "vend123")'>
+                    <strong>Vendedor</strong>
+                    <span>vendedor@comisiones.com</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private LoginRequest _request = new();
+    private string _error = "";
+
+    private void HandleLogin()
+    {
+        _error = "";
+        if (Auth.Login(_request))
+        {
+            Toast.Success($"Bienvenido, {Auth.CurrentUser!.Name}");
+            Nav.NavigateTo(Auth.IsAdmin ? "/admin/dashboard" : "/");
+        }
+        else
+        {
+            _error = "Correo o contraseña incorrectos.";
+            Toast.Error("Credenciales inválidas");
+        }
+    }
+
+    private void FillCredentials(string email, string password)
+    {
+        _request.Email = email;
+        _request.Password = password;
+        _error = "";
+    }
+}

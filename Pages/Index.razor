@@ -1,0 +1,193 @@
+@page "/"
+@inject ICommissionService CommissionService
+@inject ICountryRepository CountryRepo
+@inject IAuthService Auth
+@inject ToastService Toast
+
+<PageTitle>Calculadora de Comisiones</PageTitle>
+
+<div class="page-container">
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="hero-content">
+            <h1 class="hero-title">Calculadora de <span class="text-accent">Comisiones</span></h1>
+            <p class="hero-subtitle">Calcula tu comisión de forma rápida según tu país y ventas mensuales</p>
+        </div>
+    </section>
+
+    <div class="calculator-layout">
+        <!-- Form Card -->
+        <div class="glass-card calc-form-card">
+            <div class="card-header">
+                <h2><i class="bi bi-calculator"></i> Nueva Comisión</h2>
+            </div>
+
+            <EditForm Model="@_request" OnValidSubmit="Calculate" class="calc-form">
+                <DataAnnotationsValidator />
+
+                <div class="form-group">
+                    <label><i class="bi bi-person"></i> Vendedor</label>
+                    <InputText @bind-Value="_request.VendorName" class="form-control" placeholder="Nombre completo" />
+                    <ValidationMessage For="@(() => _request.VendorName)" />
+                </div>
+
+                <div class="form-group">
+                    <label><i class="bi bi-globe-americas"></i> País</label>
+                    <InputSelect @bind-Value="_request.CountryCode" class="form-control">
+                        <option value="">— Seleccione un país —</option>
+                        @foreach (var country in _countries)
+                        {
+                            <option value="@country.Code">@country.Flag @country.Name (@((country.CommissionRate * 100).ToString("0"))%)</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="@(() => _request.CountryCode)" />
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label><i class="bi bi-cash-stack"></i> Ventas Totales</label>
+                        <InputNumber @bind-Value="_request.TotalSales" class="form-control" placeholder="0.00" />
+                        <ValidationMessage For="@(() => _request.TotalSales)" />
+                    </div>
+                    <div class="form-group">
+                        <label><i class="bi bi-tag"></i> Descuentos</label>
+                        <InputNumber @bind-Value="_request.Discounts" class="form-control" placeholder="0.00" />
+                        <ValidationMessage For="@(() => _request.Discounts)" />
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label><i class="bi bi-calendar-month"></i> Mes</label>
+                        <InputSelect @bind-Value="_request.Month" class="form-control">
+                            @for (int m = 1; m <= 12; m++)
+                            {
+                                var month = m;
+                                <option value="@month">@_monthNames[month]</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="bi bi-calendar"></i> Año</label>
+                        <InputNumber @bind-Value="_request.Year" class="form-control" />
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-primary btn-full">
+                    <i class="bi bi-lightning-charge-fill"></i> Calcular Comisión
+                </button>
+            </EditForm>
+        </div>
+
+        <!-- Result Card -->
+        <div class="glass-card calc-result-card @(_result != null ? "show" : "")">
+            @if (_result != null)
+            {
+                <div class="result-header">
+                    <span class="result-flag">@_result.CountryFlag</span>
+                    <div>
+                        <h2>@_result.VendorName</h2>
+                        <p class="result-period">@_result.Period · @_result.CountryName</p>
+                    </div>
+                    <span class="tier-badge tier-@_result.Tier.ToLower()">@_result.Tier</span>
+                </div>
+
+                <div class="result-metrics">
+                    <div class="metric">
+                        <span class="metric-label">Ventas Totales</span>
+                        <span class="metric-value">@_result.CurrencySymbol@_result.TotalSales.ToString("N2")</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Descuentos</span>
+                        <span class="metric-value text-danger">-@_result.CurrencySymbol@_result.Discounts.ToString("N2")</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Ventas Netas</span>
+                        <span class="metric-value">@_result.CurrencySymbol@_result.NetSales.ToString("N2")</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Tasa (@((_result.CommissionRate * 100).ToString("0"))%)</span>
+                        <span class="metric-value">@_result.CurrencySymbol@_result.CommissionAmount.ToString("N2")</span>
+                    </div>
+
+                    @if (_result.HasBonus)
+                    {
+                        <div class="metric metric-bonus">
+                            <span class="metric-label">🎁 Bonificación</span>
+                            <span class="metric-value text-success">+@_result.CurrencySymbol@_result.BonusAmount.ToString("N2")</span>
+                        </div>
+                    }
+                </div>
+
+                <div class="result-total">
+                    <span>Total a Recibir</span>
+                    <span class="total-amount">@_result.CurrencySymbol@_result.TotalEarnings.ToString("N2")</span>
+                </div>
+
+                <div class="result-formula">
+                    <i class="bi bi-info-circle"></i>
+                    (@_result.TotalSales.ToString("N2") − @_result.Discounts.ToString("N2")) × @((_result.CommissionRate * 100).ToString("0"))%
+                    @if (_result.HasBonus) { <span> + Bonus</span> }
+                    = <strong>@_result.CurrencySymbol@_result.TotalEarnings.ToString("N2")</strong>
+                </div>
+            }
+            else
+            {
+                <div class="result-empty">
+                    <i class="bi bi-calculator"></i>
+                    <p>Completa el formulario para ver el resultado del cálculo</p>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Country Cards -->
+    <section class="countries-section">
+        <h2 class="section-title">Tasas por País</h2>
+        <div class="countries-grid">
+            @foreach (var c in _countries)
+            {
+                <div class="country-card glass-card">
+                    <span class="country-flag-lg">@c.Flag</span>
+                    <h3>@c.Name</h3>
+                    <div class="country-rate">@((c.CommissionRate * 100).ToString("0"))%</div>
+                    <p class="country-detail">Bonus: +@((c.BonusRate * 100).ToString("0.#"))% sobre @c.CurrencySymbol@c.BonusThreshold.ToString("N0")</p>
+                </div>
+            }
+        </div>
+    </section>
+</div>
+
+@code {
+    private CommissionRequest _request = new();
+    private CommissionResult? _result;
+    private List<Country> _countries = new();
+
+    private static readonly string[] _monthNames = {
+        "", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+    };
+
+    protected override void OnInitialized()
+    {
+        _countries = CountryRepo.GetAll();
+        if (Auth.IsAuthenticated)
+        {
+            _request.VendorName = Auth.CurrentUser!.Name;
+            _request.CountryCode = Auth.CurrentUser.CountryCode;
+        }
+    }
+
+    private void Calculate()
+    {
+        try
+        {
+            _result = CommissionService.Calculate(_request);
+            Toast.Success($"Comisión calculada: {_result.CurrencySymbol}{_result.TotalEarnings:N2}");
+        }
+        catch (Exception ex)
+        {
+            Toast.Error(ex.Message);
+        }
+    }
+}

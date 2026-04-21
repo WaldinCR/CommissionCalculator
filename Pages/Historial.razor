@@ -1,0 +1,95 @@
+@page "/historial"
+@inject ICommissionService CommissionService
+@inject ToastService Toast
+
+<PageTitle>Historial — CommissionCalc</PageTitle>
+
+<div class="page-container">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title"><i class="bi bi-clock-history"></i> Historial de Cálculos</h1>
+            <p class="page-subtitle">Registro de todas las comisiones calculadas</p>
+        </div>
+        @if (_history.Any())
+        {
+            <button class="btn-outline btn-danger-outline" @onclick="ClearHistory">
+                <i class="bi bi-trash3"></i> Limpiar
+            </button>
+        }
+    </div>
+
+    @if (!_history.Any())
+    {
+        <div class="empty-state glass-card">
+            <i class="bi bi-inbox"></i>
+            <h3>Sin cálculos todavía</h3>
+            <p>Ve a la <a href="/">calculadora</a> para hacer tu primer cálculo.</p>
+        </div>
+    }
+    else
+    {
+        <div class="history-grid">
+            @foreach (var item in _history)
+            {
+                <div class="glass-card history-card">
+                    <div class="history-card-header">
+                        <div class="history-meta">
+                            <span class="history-flag">@item.CountryFlag</span>
+                            <div>
+                                <strong>@item.VendorName</strong>
+                                <span class="history-period">@item.Period</span>
+                            </div>
+                        </div>
+                        <span class="tier-badge tier-@item.Tier.ToLower()">@item.Tier</span>
+                    </div>
+
+                    <div class="history-stats">
+                        <div class="history-stat">
+                            <span class="stat-label">Ventas</span>
+                            <span class="stat-value">@item.CurrencySymbol@item.TotalSales.ToString("N2")</span>
+                        </div>
+                        <div class="history-stat">
+                            <span class="stat-label">Netas</span>
+                            <span class="stat-value">@item.CurrencySymbol@item.NetSales.ToString("N2")</span>
+                        </div>
+                        <div class="history-stat">
+                            <span class="stat-label">Tasa</span>
+                            <span class="stat-value">@((item.CommissionRate * 100).ToString("0"))%</span>
+                        </div>
+                    </div>
+
+                    <div class="history-total">
+                        <span>Comisión Total</span>
+                        <span class="history-amount @(item.HasBonus ? "has-bonus" : "")">
+                            @item.CurrencySymbol@item.TotalEarnings.ToString("N2")
+                            @if (item.HasBonus)
+                            {
+                                <i class="bi bi-star-fill bonus-star"></i>
+                            }
+                        </span>
+                    </div>
+
+                    <div class="history-date">
+                        <i class="bi bi-clock"></i> @item.CalculatedAt.ToString("dd/MM/yyyy HH:mm")
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<CommissionResult> _history = new();
+
+    protected override void OnInitialized()
+    {
+        _history = CommissionService.GetHistory();
+    }
+
+    private void ClearHistory()
+    {
+        CommissionService.ClearHistory();
+        _history = CommissionService.GetHistory();
+        Toast.Info("Historial limpiado");
+    }
+}

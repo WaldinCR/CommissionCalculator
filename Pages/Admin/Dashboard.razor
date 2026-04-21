@@ -1,0 +1,139 @@
+@page "/admin/dashboard"
+@inject ICommissionService CommissionService
+@inject IAuthService Auth
+@inject NavigationManager Nav
+
+<PageTitle>Dashboard — CommissionCalc</PageTitle>
+
+<div class="page-container">
+    @if (!Auth.IsAdmin)
+    {
+        <div class="empty-state glass-card">
+            <i class="bi bi-shield-lock"></i>
+            <h3>Acceso Restringido</h3>
+            <p>Necesitas permisos de administrador. <a href="/login">Iniciar sesión</a></p>
+        </div>
+    }
+    else
+    {
+        <div class="page-header">
+            <div>
+                <h1 class="page-title"><i class="bi bi-grid-1x2"></i> Dashboard Administrativo</h1>
+                <p class="page-subtitle">Métricas y resumen de comisiones</p>
+            </div>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="kpi-grid">
+            <div class="glass-card kpi-card">
+                <div class="kpi-icon kpi-blue"><i class="bi bi-calculator"></i></div>
+                <div class="kpi-content">
+                    <span class="kpi-value">@_stats.TotalCalculations</span>
+                    <span class="kpi-label">Cálculos Totales</span>
+                </div>
+            </div>
+            <div class="glass-card kpi-card">
+                <div class="kpi-icon kpi-green"><i class="bi bi-cash-coin"></i></div>
+                <div class="kpi-content">
+                    <span class="kpi-value">$@_stats.TotalCommissionsPaid.ToString("N2")</span>
+                    <span class="kpi-label">Comisiones Pagadas</span>
+                </div>
+            </div>
+            <div class="glass-card kpi-card">
+                <div class="kpi-icon kpi-purple"><i class="bi bi-graph-up-arrow"></i></div>
+                <div class="kpi-content">
+                    <span class="kpi-value">$@_stats.TotalSalesVolume.ToString("N2")</span>
+                    <span class="kpi-label">Volumen de Ventas</span>
+                </div>
+            </div>
+            <div class="glass-card kpi-card">
+                <div class="kpi-icon kpi-amber"><i class="bi bi-trophy"></i></div>
+                <div class="kpi-content">
+                    <span class="kpi-value">@_stats.TopVendor</span>
+                    <span class="kpi-label">Mejor Vendedor</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tables -->
+        <div class="dashboard-grid">
+            <div class="glass-card">
+                <h3 class="card-title"><i class="bi bi-globe-americas"></i> Comisiones por País</h3>
+                @if (_stats.ByCountry.Any())
+                {
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>País</th>
+                                    <th>Cálculos</th>
+                                    <th>Ventas</th>
+                                    <th>Comisiones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var c in _stats.ByCountry)
+                                {
+                                    <tr>
+                                        <td>@c.CountryFlag @c.CountryName</td>
+                                        <td>@c.Calculations</td>
+                                        <td>$@c.TotalSales.ToString("N2")</td>
+                                        <td class="text-success">$@c.TotalCommissions.ToString("N2")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <p class="empty-text">Sin datos aún. Realiza cálculos para ver métricas.</p>
+                }
+            </div>
+
+            <div class="glass-card">
+                <h3 class="card-title"><i class="bi bi-calendar3"></i> Comisiones por Período</h3>
+                @if (_stats.ByMonth.Any())
+                {
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Período</th>
+                                    <th>Cálculos</th>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var m in _stats.ByMonth)
+                                {
+                                    <tr>
+                                        <td>@m.Month</td>
+                                        <td>@m.Calculations</td>
+                                        <td class="text-success">$@m.TotalCommissions.ToString("N2")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <p class="empty-text">Sin datos aún.</p>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private DashboardStats _stats = new();
+
+    protected override void OnInitialized()
+    {
+        if (Auth.IsAdmin)
+        {
+            _stats = CommissionService.GetDashboardStats();
+        }
+    }
+}

@@ -1,0 +1,229 @@
+@page "/admin/paises"
+@inject ICountryRepository CountryRepo
+@inject IAuthService Auth
+@inject ToastService Toast
+
+<PageTitle>Gestión de Países — CommissionCalc</PageTitle>
+
+<div class="page-container">
+    @if (!Auth.IsAdmin)
+    {
+        <div class="empty-state glass-card">
+            <i class="bi bi-shield-lock"></i>
+            <h3>Acceso Restringido</h3>
+            <p>Necesitas permisos de administrador. <a href="/login">Iniciar sesión</a></p>
+        </div>
+    }
+    else
+    {
+        <div class="page-header">
+            <div>
+                <h1 class="page-title"><i class="bi bi-globe-americas"></i> Gestión de Países</h1>
+                <p class="page-subtitle">Administra países y sus tasas de comisión</p>
+            </div>
+            <button class="btn-primary" @onclick="ShowAddForm">
+                <i class="bi bi-plus-lg"></i> Agregar País
+            </button>
+        </div>
+
+        @if (_showForm)
+        {
+            <div class="glass-card form-card">
+                <h3 class="card-title">
+                    <i class="bi bi-@(_isEditing ? "pencil" : "plus-circle")"></i>
+                    @(_isEditing ? "Editar País" : "Nuevo País")
+                </h3>
+
+                <div class="crud-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Código</label>
+                            <input @bind="_editCountry.Code" class="form-control" placeholder="US" maxlength="3"
+                                   disabled="@_isEditing" />
+                        </div>
+                        <div class="form-group">
+                            <label>Nombre</label>
+                            <input @bind="_editCountry.Name" class="form-control" placeholder="Estados Unidos" />
+                        </div>
+                        <div class="form-group">
+                            <label>Bandera (emoji)</label>
+                            <input @bind="_editCountry.Flag" class="form-control" placeholder="🇺🇸" />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Moneda</label>
+                            <input @bind="_editCountry.Currency" class="form-control" placeholder="USD" />
+                        </div>
+                        <div class="form-group">
+                            <label>Símbolo</label>
+                            <input @bind="_editCountry.CurrencySymbol" class="form-control" placeholder="$" />
+                        </div>
+                        <div class="form-group">
+                            <label>Tasa Comisión (%)</label>
+                            <input type="number" step="0.01" @bind="_ratePercent" class="form-control" placeholder="15" />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Tasa Bonus (%)</label>
+                            <input type="number" step="0.01" @bind="_bonusPercent" class="form-control" placeholder="3" />
+                        </div>
+                        <div class="form-group">
+                            <label>Umbral Bonus</label>
+                            <input type="number" @bind="_editCountry.BonusThreshold" class="form-control" placeholder="50000" />
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button class="btn-primary" @onclick="SaveCountry">
+                            <i class="bi bi-check-lg"></i> @(_isEditing ? "Actualizar" : "Guardar")
+                        </button>
+                        <button class="btn-outline" @onclick="CancelForm">
+                            <i class="bi bi-x-lg"></i> Cancelar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <div class="glass-card">
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>País</th>
+                            <th>Código</th>
+                            <th>Moneda</th>
+                            <th>Tasa</th>
+                            <th>Bonus</th>
+                            <th>Umbral</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var c in _countries)
+                        {
+                            <tr>
+                                <td>@c.Flag @c.Name</td>
+                                <td><code>@c.Code</code></td>
+                                <td>@c.CurrencySymbol (@c.Currency)</td>
+                                <td><span class="badge badge-info">@((c.CommissionRate * 100).ToString("0.#"))%</span></td>
+                                <td><span class="badge badge-success">+@((c.BonusRate * 100).ToString("0.#"))%</span></td>
+                                <td>@c.CurrencySymbol@c.BonusThreshold.ToString("N0")</td>
+                                <td class="actions-cell">
+                                    <button class="btn-icon btn-edit" @onclick="() => EditCountry(c)" title="Editar">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="btn-icon btn-delete" @onclick="() => DeleteCountry(c.Code)" title="Eliminar">
+                                        <i class="bi bi-trash3"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<Country> _countries = new();
+    private Country _editCountry = new();
+    private bool _showForm = false;
+    private bool _isEditing = false;
+    private decimal _ratePercent = 0;
+    private decimal _bonusPercent = 0;
+
+    protected override void OnInitialized()
+    {
+        LoadCountries();
+    }
+
+    private void LoadCountries()
+    {
+        _countries = CountryRepo.GetAll();
+    }
+
+    private void ShowAddForm()
+    {
+        _editCountry = new Country();
+        _ratePercent = 0;
+        _bonusPercent = 0;
+        _isEditing = false;
+        _showForm = true;
+    }
+
+    private void EditCountry(Country country)
+    {
+        _editCountry = new Country
+        {
+            Code = country.Code,
+            Name = country.Name,
+            Flag = country.Flag,
+            Currency = country.Currency,
+            CurrencySymbol = country.CurrencySymbol,
+            CommissionRate = country.CommissionRate,
+            BonusRate = country.BonusRate,
+            BonusThreshold = country.BonusThreshold
+        };
+        _ratePercent = country.CommissionRate * 100;
+        _bonusPercent = country.BonusRate * 100;
+        _isEditing = true;
+        _showForm = true;
+    }
+
+    private void SaveCountry()
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(_editCountry.Code) || string.IsNullOrWhiteSpace(_editCountry.Name))
+            {
+                Toast.Warning("Código y nombre son requeridos.");
+                return;
+            }
+
+            _editCountry.Code = _editCountry.Code.ToUpper();
+            _editCountry.CommissionRate = _ratePercent / 100;
+            _editCountry.BonusRate = _bonusPercent / 100;
+
+            if (_isEditing)
+            {
+                CountryRepo.Update(_editCountry);
+                Toast.Success($"País {_editCountry.Name} actualizado");
+            }
+            else
+            {
+                CountryRepo.Add(_editCountry);
+                Toast.Success($"País {_editCountry.Name} agregado");
+            }
+
+            LoadCountries();
+            CancelForm();
+        }
+        catch (Exception ex)
+        {
+            Toast.Error(ex.Message);
+        }
+    }
+
+    private void DeleteCountry(string code)
+    {
+        if (CountryRepo.Delete(code))
+        {
+            Toast.Success("País eliminado");
+            LoadCountries();
+        }
+        else
+        {
+            Toast.Error("No se pudo eliminar el país");
+        }
+    }
+
+    private void CancelForm()
+    {
+        _showForm = false;
+        _isEditing = false;
+    }
+}

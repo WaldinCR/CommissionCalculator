@@ -1,0 +1,110 @@
+@inherits LayoutComponentBase
+@inject IAuthService Auth
+@inject NavigationManager Nav
+@implements IDisposable
+
+<div class="app-shell">
+    <!-- Header / Navbar -->
+    <header class="app-header">
+        <div class="header-inner">
+            <a href="/" class="brand">
+                <span class="brand-icon">◈</span>
+                <span class="brand-text">Commission<span class="brand-accent">Calc</span></span>
+            </a>
+
+            <nav class="nav-links">
+                <a href="/" class="nav-link @ActiveClass("/")">
+                    <i class="bi bi-calculator"></i> Calculadora
+                </a>
+                <a href="/historial" class="nav-link @ActiveClass("/historial")">
+                    <i class="bi bi-clock-history"></i> Historial
+                </a>
+                @if (Auth.IsAdmin)
+                {
+                    <a href="/admin/dashboard" class="nav-link @ActiveClass("/admin/dashboard")">
+                        <i class="bi bi-grid-1x2"></i> Dashboard
+                    </a>
+                    <a href="/admin/paises" class="nav-link @ActiveClass("/admin/paises")">
+                        <i class="bi bi-globe-americas"></i> Países
+                    </a>
+                }
+            </nav>
+
+            <div class="header-actions">
+                @if (Auth.IsAuthenticated)
+                {
+                    <div class="user-badge">
+                        <div class="user-avatar">@Auth.CurrentUser!.Name[0]</div>
+                        <div class="user-info">
+                            <span class="user-name">@Auth.CurrentUser.Name</span>
+                            <span class="user-role">@Auth.CurrentUser.Role</span>
+                        </div>
+                    </div>
+                    <button class="btn-logout" @onclick="Logout">
+                        <i class="bi bi-box-arrow-right"></i>
+                    </button>
+                }
+                else
+                {
+                    <a href="/login" class="btn-login">
+                        <i class="bi bi-person-circle"></i> Iniciar Sesión
+                    </a>
+                }
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="app-main">
+        @Body
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+        <p>© @DateTime.Now.Year CommissionCalc — Calculadora de Comisiones de Ventas</p>
+    </footer>
+
+    <ToastContainer />
+</div>
+
+@code {
+    private string _currentUrl = "";
+
+    protected override void OnInitialized()
+    {
+        Auth.OnAuthStateChanged += HandleAuthChange;
+        Nav.LocationChanged += HandleLocationChanged;
+        _currentUrl = Nav.ToBaseRelativePath(Nav.Uri);
+    }
+
+    private string ActiveClass(string href)
+    {
+        var current = "/" + _currentUrl;
+        if (href == "/" && current == "/") return "active";
+        if (href != "/" && current.StartsWith(href)) return "active";
+        return "";
+    }
+
+    private void HandleLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        _currentUrl = Nav.ToBaseRelativePath(Nav.Uri);
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleAuthChange()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void Logout()
+    {
+        Auth.Logout();
+        Nav.NavigateTo("/");
+    }
+
+    public void Dispose()
+    {
+        Auth.OnAuthStateChanged -= HandleAuthChange;
+        Nav.LocationChanged -= HandleLocationChanged;
+    }
+}
