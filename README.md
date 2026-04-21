@@ -103,8 +103,8 @@ La aplicación estará disponible en `http://localhost:5299`
 
 | Rol | Correo | Contraseña |
 |-----|--------|------------|
-| Admin | admin@comisiones.com | admin123 |
-| Vendedor | vendedor@comisiones.com | vend123 |
+| Admin | admin@comisiones.com | 
+| Vendedor | vendedor@comisiones.com |
 
 ## Tecnologías
 
